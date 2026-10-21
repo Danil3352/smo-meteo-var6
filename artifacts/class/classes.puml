@@ -1,0 +1,133 @@
+
+@startuml
+title СМО. Вариант №6. Диаграмма классов\nТкач Данил, гр. 5130904/40101
+skinparam style strictuml
+skinparam classAttributeIconSize 0
+
+class Request {
+    - id: int
+    - sourceId: int
+    - arrivalTime: double
+    - startTime: double
+    - endTime: double
+    --
+    + waitingTime(): double
+    + serviceTime(): double
+}
+
+class Source {
+    - id: int
+    - minInterval: double
+    - maxInterval: double
+    - generatedCount: int
+    --
+    + generateRequest(now: double): Request
+    + nextInterval(): double
+}
+
+class Buffer {
+    - capacity: int
+    - requests: List<Request>
+    --
+    + hasSpace(): bool
+    + put(request: Request): void
+    + evictLowestPriority(): Request
+    + waiting(): List<Request>
+    + take(requestId: int): Request
+}
+
+class PlacementDispatcher {
+    - buffer: Buffer
+    - selection: SelectionDispatcher
+    - refusedBySource: Map<int, int>
+    --
+    + receive(request: Request): void
+    + refusedFor(sourceId: int): int
+}
+
+class SelectionDispatcher {
+    - buffer: Buffer
+    - devices: List<Device>
+    - model: Simulation
+    - pointer: int
+    - batchIds: List<int>
+    - inService: int
+    --
+    + onEvicted(requestId: int): void
+    + onDeviceFreed(requestId: int): void
+    + dispatch(now: double): void
+    - chooseBatch(): void
+}
+
+class Device {
+    - id: int
+    - busy: bool
+    - currentRequest: Request
+    - busyTime: double
+    - lambda: double
+    - servedCount: int
+    --
+    + isFree(): bool
+    + serve(request: Request, now: double): double
+    + finish(now: double): Request
+}
+
+class Simulation {
+    - sources: List<Source>
+    - devices: List<Device>
+    - buffer: Buffer
+    - placement: PlacementDispatcher
+    - selection: SelectionDispatcher
+    - events: PriorityQueue
+    - currentTime: double
+    - generationEndTime: double
+    - waitsBySource: Map<int, List<double>>
+    - servicesBySource: Map<int, List<double>>
+    --
+    + step(): bool
+    + scheduleFinish(requestId: int, deviceId: int, time: double): void
+    + runAuto(): void
+    + showResults(): void
+}
+
+note bottom of PlacementDispatcher
+receive() учитывает отказ по sourceId
+вытесненной заявки (Д1ОО2).
+end note
+
+Source ..> Request : создаёт
+Simulation --> Source : запускает генерацию
+Simulation --> PlacementDispatcher : передаёт заявку
+PlacementDispatcher --> Buffer : размещает заявку
+PlacementDispatcher --> SelectionDispatcher : уведомляет о вытеснении
+SelectionDispatcher --> Buffer : выбирает заявки
+SelectionDispatcher "1" --> "1..*" Device : назначает заявки
+SelectionDispatcher --> Simulation : планирует завершение
+Simulation --> SelectionDispatcher : запускает выбор
+Simulation --> Device : обрабатывает событие освобождения
+Buffer "1" o-- "0..*" Request : хранит
+Device "1" --> "0..1" Request : обслуживает
+
+note right of SelectionDispatcher
+Д2Б5: batchIds — ожидающие заявки
+фиксированного пакета одного источника.
+inService — число заявок пакета на приборах.
+onEvicted() убирает вытесненную заявку.
+Следующий пакет — только когда
+batchIds пуст и inService = 0.
+Д2П2: pointer — кольцевой указатель.
+end note
+
+note bottom of Simulation
+В events хранятся время, тип и данные события.
+step() выполняет ближайшее событие; в пошаговом
+режиме показывает календарь, буфер, приборы,
+указатель и текущую статистику (ОД3).
+Времена ожидания и обслуживания собираются
+отдельно по каждому источнику.
+showResults() выводит две таблицы ОР1:
+показатели источников (включая дисперсии)
+и загрузку каждого прибора.
+end note
+
+@enduml
