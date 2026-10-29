@@ -45,19 +45,19 @@ class PlacementDispatcher {
     + refusedFor(sourceId: int): int
 }
 
+
 class SelectionDispatcher {
     - buffer: Buffer
     - devices: List<Device>
     - model: Simulation
     - pointer: int
     - batchIds: List<int>
-    - inService: int
     --
     + onEvicted(requestId: int): void
-    + onDeviceFreed(requestId: int): void
-    + dispatch(now: double): void
+    + dispatch(now: double, canStartBatch: bool): void
     - chooseBatch(): void
 }
+
 
 class Device {
     - id: int
